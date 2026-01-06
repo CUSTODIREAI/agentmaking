@@ -2,6 +2,18 @@
 
 Central brain for knowledge, insights, and pipeline evolution tracking with semantic search.
 
+## Quick Install (Any Linux)
+
+```bash
+curl -sL https://raw.githubusercontent.com/CUSTODIREAI/agentmaking/main/install.sh | bash
+```
+
+Or manually:
+```bash
+git clone https://github.com/CUSTODIREAI/agentmaking.git ~/agent
+cd ~/agent && ./install.sh
+```
+
 ## Features
 
 - **Semantic Search** - Find related memories even with different wording
