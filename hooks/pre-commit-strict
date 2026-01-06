@@ -1,0 +1,63 @@
+#!/bin/bash
+# STRICT pre-commit hook: BLOCKS commits until Bender changelog is provided
+# Install: cp this to .git/hooks/pre-commit in your repo
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only)
+
+# Check if any scripts were changed
+SCRIPTS_CHANGED=$(echo "$STAGED_FILES" | grep -E '\.(py|sh|yaml|json)$')
+
+if [ -z "$SCRIPTS_CHANGED" ]; then
+    # No code files changed, allow commit
+    exit 0
+fi
+
+echo ""
+echo "=============================================="
+echo "  BENDER PROTECTION: Code changes detected!"
+echo "=============================================="
+echo ""
+echo "Changed files:"
+echo "$SCRIPTS_CHANGED" | while read f; do echo "  - $f"; done
+echo ""
+echo "You MUST document this change before committing."
+echo ""
+
+# Check if running in interactive mode
+if [ -t 0 ]; then
+    # Interactive - ask for reason
+    read -p "What changed and WHY? (required): " REASON
+
+    if [ -z "$REASON" ]; then
+        echo ""
+        echo "ERROR: Changelog entry required. Commit blocked."
+        echo "Please provide a reason for this change."
+        exit 1
+    fi
+
+    # Format entry
+    FILES_SHORT=$(echo "$SCRIPTS_CHANGED" | head -3 | tr '\n' ', ' | sed 's/,$//')
+    ENTRY="${FILES_SHORT}: ${REASON}"
+
+    # Log to Bender
+    bender log "$ENTRY" 2>/dev/null || echo "[LOGGED] $ENTRY" >> ~/.bender_changelog.txt
+
+    echo ""
+    echo "Logged to Bender. Proceeding with commit..."
+    exit 0
+else
+    # Non-interactive (CI/automated) - check for BENDER_REASON env var
+    if [ -z "$BENDER_REASON" ]; then
+        echo ""
+        echo "ERROR: Set BENDER_REASON environment variable for automated commits."
+        echo "Example: BENDER_REASON='Fixed bug in screen_shots.py' git commit -m 'fix'"
+        exit 1
+    fi
+
+    FILES_SHORT=$(echo "$SCRIPTS_CHANGED" | head -3 | tr '\n' ', ' | sed 's/,$//')
+    ENTRY="${FILES_SHORT}: ${BENDER_REASON}"
+    bender log "$ENTRY" 2>/dev/null || echo "[LOGGED] $ENTRY" >> ~/.bender_changelog.txt
+
+    exit 0
+fi
