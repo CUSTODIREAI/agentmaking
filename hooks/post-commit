@@ -1,0 +1,47 @@
+#!/bin/bash
+# Git post-commit hook: Prompts for Bender changelog entry after commits
+# Install: cp this to .git/hooks/post-commit in your repo
+
+# Get list of changed files in last commit
+CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+
+# Check if any scripts were changed
+SCRIPTS_CHANGED=$(echo "$CHANGED_FILES" | grep -E '\.(py|sh)$')
+
+if [ -n "$SCRIPTS_CHANGED" ]; then
+    echo ""
+    echo "=========================================="
+    echo "  BENDER: Code changes detected!"
+    echo "=========================================="
+    echo ""
+    echo "Changed files:"
+    echo "$SCRIPTS_CHANGED" | while read f; do echo "  - $f"; done
+    echo ""
+
+    # Get commit message
+    COMMIT_MSG=$(git log -1 --pretty=%B)
+
+    read -p "Log to Bender changelog? (y/n): " ANSWER
+
+    if [ "$ANSWER" = "y" ] || [ "$ANSWER" = "Y" ]; then
+        echo ""
+        echo "Why was this code changed? (press Enter twice to finish)"
+        echo "---"
+
+        REASON=""
+        while IFS= read -r LINE; do
+            [ -z "$LINE" ] && break
+            REASON="${REASON}${LINE} "
+        done
+
+        if [ -n "$REASON" ]; then
+            # Format: files changed + reason
+            FILES_SHORT=$(echo "$SCRIPTS_CHANGED" | head -3 | tr '\n' ', ' | sed 's/,$//')
+            ENTRY="${FILES_SHORT}: ${REASON}"
+
+            bender log "$ENTRY"
+            echo ""
+            echo "Logged to Bender!"
+        fi
+    fi
+fi
